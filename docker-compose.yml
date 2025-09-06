@@ -39,17 +39,18 @@ services:
       - postgres
       - redis
     environment:
+      # Carrega as strings de conexão a partir do arquivo .env
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis:6379
     networks:
       - taskflow-net
 
-# Volumes para persistência de dados (evita perda de dados ao recriar contêineres)
+# Volumes para persistência de dados
 volumes:
   postgres_data:
   redis_data:
 
-# Rede customizada para permitir a comunicação entre os serviços por nome
+# Rede customizada para a comunicação entre os serviços
 networks:
   taskflow-net:
     driver: bridge
