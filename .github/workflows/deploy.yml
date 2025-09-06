@@ -11,38 +11,30 @@ env:
 
 jobs:
   # ---------------------------
-  # Job 1: Build e push Docker
+  # Job 1: Build & Push Docker
   # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-
-      - name: Build and push Docker image
+      - name: Build & Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.IMAGE_NAME }}:latest
 
   # ---------------------------
   # Job 2: Deploy na VPS
@@ -50,57 +42,23 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: self-hosted
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Atualizar arquivo de ambiente
+      - name: Atualizar arquivo .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
-      - name: Logar no GitHub Container Registry
+      - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios do Certbot
+      - name: Criar diretórios Certbot
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
-      - name: Gerenciar certificado Let’s Encrypt
+      - name: Deploy completo com Docker Compose
         run: |
-          #!/bin/bash
-          set -e
-          
-          echo "Parando NGINX caso esteja rodando..."
-          docker compose stop nginx || true
-
-          CERT_PATH="./data/certbot/conf/live/$DOMAIN/fullchain.pem"
-
-          if [ -f "$CERT_PATH" ]; then
-            echo "Certificado já existe, pulando criação."
-          else
-            echo "Criando certificado de teste (staging) para evitar limites do Let's Encrypt..."
-            docker compose run --rm -p 80:80 --entrypoint "certbot" certbot \
-              certonly --standalone --staging -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
-          fi
-
-      - name: Deploy Docker Compose
-        run: |
-          echo "Baixando a imagem mais recente da API..."
-          docker compose pull api
-
-          echo "Subindo todos os contêineres..."
-          docker compose up -d
-
-          echo "Limpando imagens antigas..."
+          docker compose pull
+          docker compose up -d --build
           docker image prune -af
-
-          echo "Deploy finalizado com sucesso!"
-
-      - name: Renovar certificado (produção)
-        run: |
-          # Se já tiver certificado de staging, você pode trocar para produção quando liberar
-          if [ -f "$CERT_PATH" ]; then
-            echo "Renovando certificado (produção) se necessário..."
-            docker compose run --rm --entrypoint "certbot" certbot renew --quiet
-          fi
