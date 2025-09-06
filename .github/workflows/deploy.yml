@@ -57,6 +57,9 @@ jobs:
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
+      - name: Parar containers existentes para liberar a porta 80
+        run: docker compose down || echo "Nenhum container em execução para parar."
+
       - name: Gerar ou renovar certificado Let’s Encrypt
         run: |
           docker run --rm \
