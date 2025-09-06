@@ -1,27 +1,33 @@
 services:
+
+  certbot:
+    image: certbot/certbot
+    container_name: taskflow_certbot
+    command: certonly --webroot -w /var/www/certbot --email kelvingabriel70@hotmail.com --agree-tos --no-eff-email -d taskflow.vps-kinghost.net --force-renewal
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    healthcheck:
+      test: ["CMD", "test", "-f", "/etc/letsencrypt/live/taskflow.vps-kinghost.net/fullchain.pem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
-    restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
+      - ./data/nginx/conf.d:/etc/nginx/conf.d
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
     depends_on:
-      - api
+      certbot:
+        condition: service_healthy
     networks:
       - taskflow-net
-  
-  certbot:
-    image: certbot/certbot
-    container_name: taskflow_certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
 
   api:
     container_name: taskflow_api
