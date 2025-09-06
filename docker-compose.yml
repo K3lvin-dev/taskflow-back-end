@@ -35,6 +35,7 @@ services:
       - postgres
       - redis
     environment:
+      - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis:6379
     networks:
