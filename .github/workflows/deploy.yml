@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: false # Impede que os certificados salvos sejam apagados
 
       - name: Log in GHCR
         uses: docker/login-action@v3
@@ -45,6 +47,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: false # Impede que os certificados salvos sejam apagados
 
       - name: Atualizar arquivo .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
@@ -52,7 +56,7 @@ jobs:
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios para certificados
+      - name: Criar diretórios para certificados (se não existirem)
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
@@ -60,7 +64,7 @@ jobs:
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou Renovar Certificado (Staging)
+      - name: Gerar ou Renovar Certificado de Produção
         run: |
           docker run --rm \
             -p 80:80 \
@@ -70,10 +74,10 @@ jobs:
             certbot/certbot -c "
               if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then
                 echo 'Certificado encontrado. Tentando renovar...'
-                certbot renew --staging;
+                certbot renew;
               else
                 echo 'Nenhum certificado encontrado. Gerando um novo...'
-                certbot certonly --standalone --staging -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive;
+                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive;
               fi
             "
 
@@ -82,3 +86,4 @@ jobs:
           docker compose pull
           docker compose up -d --build
           docker image prune -af
+
