@@ -1,5 +1,5 @@
 services:
-  # Serviço do NGINX como Proxy Reverso e Servidor Web
+  # Serviço do NGINX como Proxy Reverso
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
@@ -11,22 +11,37 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    # Comando correto: espera o certificado existir antes de iniciar o NGINX.
-    command: /bin/sh -c 'while ! [ -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; do sleep 1; done; nginx -g "daemon off;"'
     depends_on:
       - api
     networks:
       - taskflow-net
+    command: /bin/sh -c 'if [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; then echo "Cert not found, waiting..."; exit 1; fi; nginx -g "daemon off;"'
 
-  # Serviço do Certbot para geração e renovação de certificados
-  certbot:
+  # Serviço do Certbot para geração inicial de certificado
+  certbot-init:
     image: certbot/certbot
-    container_name: taskflow_certbot
+    container_name: taskflow_certbot_init
+    restart: "no"
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    command: >
+      sh -c "certbot certonly --webroot -w /var/www/certbot
+      --non-interactive --agree-tos -m kelvingabriel70@hotmail.com
+      -d app.taskflow.vps-kinghost.net --rsa-key-size 4096"
+    networks:
+      - taskflow-net
+
+  # Serviço do Certbot para renovação automática
+  certbot-renew:
+    image: certbot/certbot
+    container_name: taskflow_certbot_renew
     restart: always
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    command: sh -c "certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m kelvingabriel70@hotmail.com -d app.taskflow.vps-kinghost.net --rsa-key-size 4096 || true && sleep 12h && certbot renew"
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
     networks:
       - taskflow-net
 
@@ -44,7 +59,12 @@ services:
       - Redis__Configuration=redis:6379
     networks:
       - taskflow-net
-   
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health" ]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
   # Serviço do Banco de Dados PostgreSQL
   postgres:
     image: postgres:14-alpine
@@ -58,6 +78,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - taskflow-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
 
   # Serviço de Cache com Redis
   redis:
@@ -68,13 +93,16 @@ services:
       - redis_data:/data
     networks:
       - taskflow-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
 
-# Volumes para persistência de dados
 volumes:
   postgres_data:
   redis_data:
 
-# Rede customizada para a comunicação entre os serviços
 networks:
   taskflow-net:
     driver: bridge
