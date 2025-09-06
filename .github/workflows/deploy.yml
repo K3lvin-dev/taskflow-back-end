@@ -6,9 +6,13 @@ on:
 
 env:
   IMAGE_NAME: ghcr.io/k3lvin-dev/taskflow-api
+  DOMAIN: app.taskflow.vps-kinghost.net
+  EMAIL: kelvingabriel70@hotmail.com
 
 jobs:
-  # Job 1: Constrói a imagem Docker e envia para o GitHub Container Registry
+  # ---------------------------
+  # Job 1: Build e push Docker
+  # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -40,7 +44,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Job 2: Deploy na VPS usando runner self-hosted
+  # ---------------------------
+  # Job 2: Deploy na VPS
+  # ---------------------------
   deploy:
     needs: build-and-push
     runs-on: self-hosted
@@ -48,35 +54,34 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Atualizar arquivo de ambiente
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
       - name: Logar no GitHub Container Registry
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-          
+
       - name: Criar diretórios do Certbot
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
-      - name: Criar certificado inicial Let’s Encrypt
+      - name: Gerenciar certificado Let’s Encrypt
         run: |
           #!/bin/bash
           set -e
           
-          DOMAIN="app.taskflow.vps-kinghost.net"
-          EMAIL="kelvingabriel70@hotmail.com"
-
           echo "Parando NGINX caso esteja rodando..."
           docker compose stop nginx || true
 
-          if [ ! -f ./data/certbot/conf/live/$DOMAIN/fullchain.pem ]; then
-            echo "Criando certificado inicial para $DOMAIN..."
-            docker compose run --rm -p 80:80 --entrypoint "certbot" certbot \
-              certonly --standalone -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
-          else
+          CERT_PATH="./data/certbot/conf/live/$DOMAIN/fullchain.pem"
+
+          if [ -f "$CERT_PATH" ]; then
             echo "Certificado já existe, pulando criação."
+          else
+            echo "Criando certificado de teste (staging) para evitar limites do Let's Encrypt..."
+            docker compose run --rm -p 80:80 --entrypoint "certbot" certbot \
+              certonly --standalone --staging -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
           fi
 
       - name: Deploy Docker Compose
@@ -91,3 +96,11 @@ jobs:
           docker image prune -af
 
           echo "Deploy finalizado com sucesso!"
+
+      - name: Renovar certificado (produção)
+        run: |
+          # Se já tiver certificado de staging, você pode trocar para produção quando liberar
+          if [ -f "$CERT_PATH" ]; then
+            echo "Renovando certificado (produção) se necessário..."
+            docker compose run --rm --entrypoint "certbot" certbot renew --quiet
+          fi
