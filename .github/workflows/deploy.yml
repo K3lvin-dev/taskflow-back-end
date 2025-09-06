@@ -60,7 +60,7 @@ jobs:
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou renovar certificado Let’s Encrypt
+      - name: Gerar ou renovar certificado Let’s Encrypt (Staging)
         run: |
           docker run --rm \
             -p 80:80 \
@@ -68,6 +68,7 @@ jobs:
             -v $(pwd)/data/certbot/www:/var/www/certbot \
             certbot/certbot certonly \
             --standalone \
+            --staging \
             -d ${{ env.DOMAIN }} \
             --email ${{ env.EMAIL }} \
             --agree-tos \
