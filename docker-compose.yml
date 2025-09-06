@@ -1,18 +1,16 @@
 services:
-
   certbot:
     image: certbot/certbot
     container_name: taskflow_certbot
-    command: certonly --webroot -w /var/www/certbot --email kelvingabriel70@hotmail.com --agree-tos --no-eff-email -d taskflow.vps-kinghost.net --force-renewal
+    command: certonly --webroot -w /var/www/certbot --email kelvingabriel70@hotmail.com --agree-tos --no-eff-email -d app.taskflow.vps-kinghost.net --force-renewal
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
     healthcheck:
-      test: ["CMD", "test", "-f", "/etc/letsencrypt/live/taskflow.vps-kinghost.net/fullchain.pem"]
+      test: ["CMD", "test", "-f", "/etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem"]
       interval: 10s
       timeout: 5s
       retries: 5
-
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
