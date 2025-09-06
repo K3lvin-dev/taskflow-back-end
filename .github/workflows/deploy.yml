@@ -1,17 +1,15 @@
 name: CI/CD - Deploy TaskFlow API to VPS
 
-# Gatilho: Roda a cada push na branch 'main'
 on:
   push:
     branches: [ "main" ]
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/taskflow-api
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner.toLowerCase() }}/taskflow-api
 
 jobs:
-  # Job 1: Constrói a imagem e envia para o registry
+  # Job 1: Constrói a imagem Docker e a envia para o registry
   build-and-push:
-    # Este job ainda roda no ambiente do GitHub
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,10 +40,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Job 2: Faz o deploy usando nosso runner na VPS
+  # Job 2: Faz o deploy usando o nosso runner na VPS
   deploy:
     needs: build-and-push
-    
     runs-on: self-hosted
 
     steps:

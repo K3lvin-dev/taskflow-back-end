@@ -31,7 +31,7 @@ services:
   # Serviço da API .NET Core
   api:
     container_name: taskflow_api
-    image: ghcr.io/K3lvin-dev/taskflow-api:main
+    image: ghcr.io/k3lvin-dev/taskflow-api:main
     restart: always
     ports:
       - "8080:80"
@@ -39,12 +39,10 @@ services:
       - postgres
       - redis
     environment:
-      # Carrega as strings de conexão a partir do arquivo .env
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis:6379
     networks:
       - taskflow-net
-
 # Volumes para persistência de dados
 volumes:
   postgres_data:
