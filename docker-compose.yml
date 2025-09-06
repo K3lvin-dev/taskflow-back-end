@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Define os serviços (contêineres) que compõem a aplicação
 services:
   # Serviço do Banco de Dados PostgreSQL
@@ -33,9 +31,8 @@ services:
   # Serviço da API .NET Core
   api:
     container_name: taskflow_api
-    # Constrói a imagem a partir do Dockerfile na pasta ./backend
     build:
-      context: ./TaskFlowAPI 
+      context: .
       dockerfile: Dockerfile
     restart: always
     ports:
