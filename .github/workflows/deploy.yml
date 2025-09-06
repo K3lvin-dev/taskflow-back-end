@@ -1,0 +1,83 @@
+name: CI/CD - Deploy TaskFlow API to VPS
+
+# Gatilho: O workflow roda a cada push na branch 'main'
+on:
+  push:
+    branches: [ "main" ]
+
+# Variáveis de ambiente para o workflow
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/taskflow-api
+
+jobs:
+  # Job responsável por construir e publicar a imagem
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. Clona o repositório para a máquina virtual
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Faz login no GitHub Container Registry
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Extrai metadados da imagem (como tags)
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+
+      # 4. Constrói a imagem Docker e a envia para o registry
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # Job responsável por fazer o deploy na VPS
+  deploy:
+    # Garante que o deploy só rode após o sucesso do build-and-push
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Configura a conexão SSH com a VPS usando secrets
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      # 2. Conecta na VPS e executa o script de deploy
+      - name: Deploy to VPS
+        run: |
+          # Adiciona o host da VPS aos hosts conhecidos para evitar prompts interativos
+          ssh-add -D
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          
+          # Comando para conectar via SSH e executar os comandos de deploy
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            cd ~/tcc-taskflow
+            
+            echo "${{ secrets.ENV_FILE }}" > .env
+            
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            
+            docker-compose pull api
+            
+            docker-compose up -d --build
+            
+            docker image prune -af
+          '

@@ -31,18 +31,14 @@ services:
   # Serviço da API .NET Core
   api:
     container_name: taskflow_api
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/K3lvin-dev/taskflow-api:main
     restart: always
     ports:
       - "8080:80"
-    # Garante que o banco e o cache iniciem antes da API
     depends_on:
       - postgres
       - redis
     environment:
-      # Carrega as strings de conexão a partir do arquivo .env
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis:6379
     networks:
