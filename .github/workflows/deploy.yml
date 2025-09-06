@@ -8,7 +8,7 @@ env:
   IMAGE_NAME: ghcr.io/k3lvin-dev/taskflow-api
 
 jobs:
-  # Job 1: Constrói a imagem Docker e a envia para o registry
+  # Job 1: Constrói a imagem Docker e envia para o GitHub Container Registry
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to the Container registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -40,7 +40,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Job 2: Faz o deploy usando o nosso runner na VPS
+  # Job 2: Deploy na VPS usando runner self-hosted
   deploy:
     needs: build-and-push
     runs-on: self-hosted
@@ -49,21 +49,45 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Deploy to VPS
-        run: |
-          echo ">>> Atualizando arquivo de ambiente .env"
-          echo "${{ secrets.ENV_FILE }}" > .env
+      - name: Atualizar arquivo de ambiente
+        run: echo "${{ secrets.ENV_FILE }}" > .env
 
-          echo ">>> Logando no GitHub Container Registry"
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      - name: Logar no GitHub Container Registry
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           
-          echo ">>> Baixando a imagem mais recente da API"
+      - name: Criar diretórios do Certbot
+        run: |
+          mkdir -p ./data/certbot/conf
+          mkdir -p ./data/certbot/www
+
+      - name: Criar certificado inicial Let’s Encrypt
+        run: |
+          #!/bin/bash
+          set -e
+          
+          DOMAIN="app.taskflow.vps-kinghost.net"
+          EMAIL="kelvingabriel70@hotmail.com"
+
+          echo "Parando NGINX caso esteja rodando..."
+          docker compose stop nginx || true
+
+          if [ ! -f ./data/certbot/conf/live/$DOMAIN/fullchain.pem ]; then
+            echo "Criando certificado inicial para $DOMAIN..."
+            docker compose run --rm -p 80:80 --entrypoint "certbot" certbot \
+              certonly --standalone -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+          else
+            echo "Certificado já existe, pulando criação."
+          fi
+
+      - name: Deploy Docker Compose
+        run: |
+          echo "Baixando a imagem mais recente da API..."
           docker compose pull api
-          
-          echo ">>> Recriando os contêineres com a nova imagem"
+
+          echo "Subindo todos os contêineres..."
           docker compose up -d
-          
-          echo ">>> Limpando imagens Docker antigas"
+
+          echo "Limpando imagens antigas..."
           docker image prune -af
-          
-          echo ">>> Deploy finalizado com sucesso!"
+
+          echo "Deploy finalizado com sucesso!"

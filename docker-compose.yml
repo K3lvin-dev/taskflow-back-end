@@ -1,5 +1,5 @@
 services:
-  # Serviço da API .NET
+  # API .NET
   api:
     container_name: taskflow_api
     image: ghcr.io/k3lvin-dev/taskflow-api:main
@@ -38,7 +38,7 @@ services:
     networks:
       - taskflow-net
 
-  # Certbot (criação e renovação)
+  # Certbot (renovação automática)
   certbot:
     image: certbot/certbot
     container_name: taskflow_certbot
@@ -48,19 +48,11 @@ services:
       - ./data/certbot/www:/var/www/certbot
     command: >
       sh -c "
-        # Se não existir certificado, cria standalone
-        if [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; then
-          certbot certonly --standalone -d app.taskflow.vps-kinghost.net --email kelvingabriel70@hotmail.com --agree-tos --non-interactive;
-        fi
-        # Loop de renovação a cada 12h
         while :; do
           certbot renew --quiet;
           sleep 12h;
         done
       "
-    ports:
-      - "80:80"
-      - "443:443"
     networks:
       - taskflow-net
 
@@ -79,7 +71,6 @@ services:
     command: /bin/sh -c 'while ! [ -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; do sleep 1; done; nginx -g "daemon off;"'
     depends_on:
       - api
-      - certbot
     networks:
       - taskflow-net
 
