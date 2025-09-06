@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  IMAGE_NAME: ghcr.io/${{ toLower(github.repository_owner) }}/taskflow-api
+  IMAGE_NAME: ghcr.io/k3lvin-dev/taskflow-api
 
 jobs:
   # Job 1: Constrói a imagem Docker e a envia para o registry
@@ -55,7 +55,7 @@ jobs:
           echo "${{ secrets.ENV_FILE }}" > .env
 
           echo ">>> Logando no GitHub Container Registry"
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ toLower(github.repository_owner) }} --password-stdin
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           
           echo ">>> Baixando a imagem mais recente da API"
           docker compose pull api
