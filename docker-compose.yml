@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   # Serviço do NGINX como Proxy Reverso
   nginx:
@@ -15,9 +17,10 @@ services:
       - api
     networks:
       - taskflow-net
-    command: /bin/sh -c 'if [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; then echo "Cert not found, waiting..."; exit 1; fi; nginx -g "daemon off;"'
+    # Inicia apenas se o certificado existir
+    command: /bin/sh -c 'while [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; do echo "Waiting for certificate..."; sleep 2; done; nginx -g "daemon off;"'
 
-  # Serviço do Certbot para geração inicial de certificado
+  # Serviço do Certbot para geração inicial do certificado
   certbot-init:
     image: certbot/certbot
     container_name: taskflow_certbot_init
@@ -25,10 +28,7 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    command: >
-      certbot certonly --webroot -w /var/www/certbot
-      --non-interactive --agree-tos -m kelvingabriel70@hotmail.com
-      -d app.taskflow.vps-kinghost.net --rsa-key-size 4096
+    command: certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m kelvingabriel70@hotmail.com -d app.taskflow.vps-kinghost.net --rsa-key-size 4096
     networks:
       - taskflow-net
 
@@ -40,8 +40,7 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    entrypoint: >
-      sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
+    entrypoint: sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
     networks:
       - taskflow-net
 
@@ -60,7 +59,7 @@ services:
     networks:
       - taskflow-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 10s
       retries: 5
       timeout: 5s
@@ -99,10 +98,12 @@ services:
       retries: 5
       timeout: 5s
 
+# Volumes persistentes
 volumes:
   postgres_data:
   redis_data:
 
+# Rede customizada
 networks:
   taskflow-net:
     driver: bridge
