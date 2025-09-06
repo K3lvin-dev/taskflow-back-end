@@ -66,7 +66,15 @@ jobs:
             -p 80:80 \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
-            certbot/certbot --staging sh -c "if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then certbot renew; else certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive; fi"
+            certbot/certbot sh -c '
+              if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then
+                echo "Certificado encontrado. Tentando renovar..."
+                certbot renew --staging;
+              else
+                echo "Nenhum certificado encontrado. Gerando um novo..."
+                certbot certonly --standalone --staging -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive;
+              fi
+            '
 
       - name: Deploy com Docker Compose
         run: |
