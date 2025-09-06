@@ -21,6 +21,7 @@ services:
    - certbot
   networks:
    - taskflow-net
+  command: /bin/sh -c 'while ! [ -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; do echo "Waiting for SSL certificates..."; sleep 5; done; nginx -g "daemon off;"'
 
  api:
   container_name: taskflow_api
