@@ -60,6 +60,7 @@ jobs:
       - name: Gerar ou renovar certificado Let’s Encrypt
         run: |
           docker run --rm \
+            -p 80:80 \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
             certbot/certbot certonly \
