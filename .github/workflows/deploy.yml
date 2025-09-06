@@ -2,7 +2,7 @@ name: CI/CD - Deploy TaskFlow API to VPS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   IMAGE_NAME: ghcr.io/k3lvin-dev/taskflow-api
@@ -10,6 +10,9 @@ env:
   EMAIL: kelvingabriel70@hotmail.com
 
 jobs:
+  # ---------------------------
+  # Job 1: Build & Push Docker
+  # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -33,6 +36,9 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_NAME }}:latest
 
+  # ---------------------------
+  # Job 2: Deploy na VPS
+  # ---------------------------
   deploy:
     needs: build-and-push
     runs-on: self-hosted
@@ -57,7 +63,7 @@ jobs:
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
             certbot/certbot certonly \
-            --webroot -w /var/www/certbot \
+            --standalone \
             -d ${{ env.DOMAIN }} \
             --email ${{ env.EMAIL }} \
             --agree-tos \
