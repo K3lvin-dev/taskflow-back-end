@@ -1,0 +1,62 @@
+version: '3.8'
+
+# Define os serviços (contêineres) que compõem a aplicação
+services:
+  # Serviço do Banco de Dados PostgreSQL
+  postgres:
+    image: postgres:14-alpine
+    container_name: taskflow_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskflow-net
+
+  # Serviço de Cache com Redis
+  redis:
+    image: redis:7-alpine
+    container_name: taskflow_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - taskflow-net
+
+  # Serviço da API .NET Core
+  api:
+    container_name: taskflow_api
+    # Constrói a imagem a partir do Dockerfile na pasta ./backend
+    build:
+      context: ./TaskFlowAPI 
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8080:80"
+    # Garante que o banco e o cache iniciem antes da API
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      # Carrega as strings de conexão a partir do arquivo .env
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+      - Redis__Configuration=redis:6379
+    networks:
+      - taskflow-net
+
+# Volumes para persistência de dados (evita perda de dados ao recriar contêineres)
+volumes:
+  postgres_data:
+  redis_data:
+
+# Rede customizada para permitir a comunicação entre os serviços por nome
+networks:
+  taskflow-net:
+    driver: bridge
