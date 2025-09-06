@@ -26,9 +26,9 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
     command: >
-      sh -c "certbot certonly --webroot -w /var/www/certbot
+      certbot certonly --webroot -w /var/www/certbot
       --non-interactive --agree-tos -m kelvingabriel70@hotmail.com
-      -d app.taskflow.vps-kinghost.net --rsa-key-size 4096"
+      -d app.taskflow.vps-kinghost.net --rsa-key-size 4096
     networks:
       - taskflow-net
 
