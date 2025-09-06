@@ -66,19 +66,19 @@ jobs:
             -p 80:80 \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
-            certbot/certbot sh -c '
+            --entrypoint /bin/sh \
+            certbot/certbot -c "
               if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then
-                echo "Certificado encontrado. Tentando renovar..."
+                echo 'Certificado encontrado. Tentando renovar...'
                 certbot renew --staging;
               else
-                echo "Nenhum certificado encontrado. Gerando um novo..."
+                echo 'Nenhum certificado encontrado. Gerando um novo...'
                 certbot certonly --standalone --staging -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive;
               fi
-            '
+            "
 
       - name: Deploy com Docker Compose
         run: |
           docker compose pull
           docker compose up -d --build
           docker image prune -af
-
