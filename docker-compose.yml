@@ -1,72 +1,67 @@
 services:
-  certbot:
-    image: certbot/certbot
-    container_name: taskflow_certbot
-    command: certonly --webroot -w /var/www/certbot --email kelvingabriel70@hotmail.com --agree-tos --no-eff-email -d app.taskflow.vps-kinghost.net --force-renewal
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    healthcheck:
-      test: ["CMD", "test", "-f", "/etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: taskflow_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./data/nginx/conf.d:/etc/nginx/conf.d
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    depends_on:
-      certbot:
-        condition: service_healthy
-    networks:
-      - taskflow-net
+ certbot:
+  image: certbot/certbot
+  container_name: taskflow_certbot
+  command: certonly --webroot -w /var/www/certbot --email kelvingabriel70@hotmail.com --agree-tos --no-eff-email -d app.taskflow.vps-kinghost.net --force-renewal
+  volumes:
+   - ./data/certbot/conf:/etc/letsencrypt
+   - ./data/certbot/www:/var/www/certbot
+   
+ nginx:
+  image: nginx:1.27-alpine
+  container_name: taskflow_nginx
+  ports:
+   - "80:80"
+   - "443:443"
+  volumes:
+   - ./data/nginx/conf.d:/etc/nginx/conf.d
+   - ./data/certbot/conf:/etc/letsencrypt
+   - ./data/certbot/www:/var/www/certbot
+  depends_on:
+   - certbot
+  networks:
+   - taskflow-net
 
-  api:
-    container_name: taskflow_api
-    image: ghcr.io/k3lvin-dev/taskflow-api:main
-    restart: always
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
-      - Redis__Configuration=redis:6379
-    networks:
-      - taskflow-net
-      
-  postgres:
-    image: postgres:14-alpine
-    container_name: taskflow_postgres
-    restart: always
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - taskflow-net
+ api:
+  container_name: taskflow_api
+  image: ghcr.io/k3lvin-dev/taskflow-api:main
+  restart: always
+  depends_on:
+   - postgres
+   - redis
+  environment:
+   - ASPNETCORE_URLS=http://+:80
+   - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+   - Redis__Configuration=redis:6379
+  networks:
+   - taskflow-net
+   
+ postgres:
+  image: postgres:14-alpine
+  container_name: taskflow_postgres
+  restart: always
+  environment:
+   - POSTGRES_USER=${POSTGRES_USER}
+   - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+   - POSTGRES_DB=${POSTGRES_DB}
+  volumes:
+   - postgres_data:/var/lib/postgresql/data
+  networks:
+   - taskflow-net
 
-  redis:
-    image: redis:7-alpine
-    container_name: taskflow_redis
-    restart: always
-    volumes:
-      - redis_data:/data
-    networks:
-      - taskflow-net
+ redis:
+  image: redis:7-alpine
+  container_name: taskflow_redis
+  restart: always
+  volumes:
+   - redis_data:/data
+  networks:
+   - taskflow-net
 
 volumes:
-  postgres_data:
-  redis_data:
+ postgres_data:
+ redis_data:
 
 networks:
-  taskflow-net:
-    driver: bridge
+ taskflow-net:
+  driver: bridge
