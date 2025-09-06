@@ -18,6 +18,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,6 +43,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: self-hosted
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,13 +54,29 @@ jobs:
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios Certbot
+      - name: Criar diretórios do Certbot
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
       - name: Deploy completo com Docker Compose
         run: |
+          echo "Baixando imagens mais recentes..."
           docker compose pull
-          docker compose up -d --build
+
+          echo "Subindo containers (API, DB, Redis, Certbot)..."
+          docker compose up -d --build api postgres redis certbot
+
+          echo "Aguardando emissão do certificado de produção..."
+          until [ -f ./data/certbot/conf/live/${DOMAIN}/fullchain.pem ]; do
+            echo "Esperando certificado Let’s Encrypt..."
+            sleep 5
+          done
+
+          echo "Certificado pronto! Subindo Nginx com HTTPS..."
+          docker compose up -d --build nginx
+
+          echo "Limpando imagens antigas..."
           docker image prune -af
+
+          echo "Deploy finalizado com sucesso!"

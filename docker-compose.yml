@@ -44,7 +44,7 @@ services:
       - taskflow-net
 
   # ---------------------------
-  # Certbot (renovação automática)
+  # Certbot (para HTTPS)
   # ---------------------------
   certbot:
     image: certbot/certbot
@@ -53,8 +53,12 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
+    entrypoint: ""
     command: >
       sh -c "
+        if [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; then
+          certbot certonly --standalone -d app.taskflow.vps-kinghost.net --email ${EMAIL} --agree-tos --non-interactive;
+        fi
         while :; do
           certbot renew --quiet;
           sleep 12h;
@@ -64,7 +68,7 @@ services:
       - taskflow-net
 
   # ---------------------------
-  # NGINX como Proxy Reverso
+  # Nginx Proxy Reverso
   # ---------------------------
   nginx:
     image: nginx:1.27-alpine
@@ -79,18 +83,11 @@ services:
       - ./data/certbot/www:/var/www/certbot
     depends_on:
       - api
+      - certbot
     networks:
       - taskflow-net
     command: >
-      sh -c "
-        # Se não existe certificado, gera automaticamente
-        if [ ! -f /etc/letsencrypt/live/app.taskflow.vps-kinghost.net/fullchain.pem ]; then
-          echo 'Emitindo certificado de produção...';
-          certbot certonly --standalone -d app.taskflow.vps-kinghost.net --email ${EMAIL} --agree-tos --non-interactive;
-        fi
-        echo 'Certificado pronto, iniciando Nginx';
-        nginx -g 'daemon off;'
-      "
+      sh -c "nginx -g 'daemon off;'"
 
 volumes:
   postgres_data:
