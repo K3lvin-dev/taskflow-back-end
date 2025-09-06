@@ -17,7 +17,7 @@ services:
     networks:
       - taskflow-net
 
-  # Serviço unificado do Certbot para geração e renovação
+  # Serviço unificado do Certbot com SINTAXE CORRIGIDA
   certbot:
     image: certbot/certbot
     container_name: taskflow_certbot
@@ -25,9 +25,12 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    command: sh -c "certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m kelvingabriel70@hotmail.com -d app.taskflow.vps-kinghost.net --rsa-key-size 4096 || true; trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
-    networks:
-      - taskflow-net
+    # ESTA É A CORREÇÃO: Definimos o entrypoint explicitamente
+    entrypoint: "/bin/sh -c"
+    # E passamos o comando como um argumento para o shell
+    command: "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
+    # Removido depends_on para evitar dependência circular na inicialização
+    # A lógica de espera do NGINX já resolve a corrida.
 
   # Serviço da API .NET
   api:
@@ -50,7 +53,7 @@ services:
     container_name: taskflow_postgres
     restart: always
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTG-RES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
