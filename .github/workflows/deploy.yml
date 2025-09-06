@@ -10,15 +10,11 @@ env:
   EMAIL: kelvingabriel70@hotmail.com
 
 jobs:
-  # ---------------------------
-  # Job 1: Build & Push Docker
-  # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,13 +33,9 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_NAME }}:latest
 
-  # ---------------------------
-  # Job 2: Deploy na VPS
-  # ---------------------------
   deploy:
     needs: build-and-push
     runs-on: self-hosted
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -54,29 +46,26 @@ jobs:
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios do Certbot
+      - name: Criar diretórios para certificados
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
-      - name: Deploy completo com Docker Compose
+      - name: Gerar ou renovar certificado Let’s Encrypt
         run: |
-          echo "Baixando imagens mais recentes..."
+          docker run --rm \
+            -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
+            -v $(pwd)/data/certbot/www:/var/www/certbot \
+            certbot/certbot certonly \
+            --webroot -w /var/www/certbot \
+            -d ${{ env.DOMAIN }} \
+            --email ${{ env.EMAIL }} \
+            --agree-tos \
+            --non-interactive \
+            || echo "Certificado já existente ou renovado."
+
+      - name: Deploy com Docker Compose
+        run: |
           docker compose pull
-
-          echo "Subindo containers (API, DB, Redis, Certbot)..."
-          docker compose up -d --build api postgres redis certbot
-
-          echo "Aguardando emissão do certificado de produção..."
-          until [ -f ./data/certbot/conf/live/${DOMAIN}/fullchain.pem ]; do
-            echo "Esperando certificado Let’s Encrypt..."
-            sleep 5
-          done
-
-          echo "Certificado pronto! Subindo Nginx com HTTPS..."
-          docker compose up -d --build nginx
-
-          echo "Limpando imagens antigas..."
+          docker compose up -d --build
           docker image prune -af
-
-          echo "Deploy finalizado com sucesso!"
