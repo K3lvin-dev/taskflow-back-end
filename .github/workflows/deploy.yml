@@ -61,10 +61,10 @@ jobs:
           echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           
           echo ">>> Baixando a imagem mais recente da API"
-          docker-compose pull api
+          docker compose pull api
           
           echo ">>> Recriando os contêineres com a nova imagem"
-          docker-compose up -d
+          docker compose up -d
           
           echo ">>> Limpando imagens Docker antigas"
           docker image prune -af
