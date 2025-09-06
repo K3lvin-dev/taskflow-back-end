@@ -60,20 +60,27 @@ jobs:
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou renovar certificado Let’s Encrypt (Staging)
+      - name: Gerar ou Renovar Certificado (Staging)
         run: |
           docker run --rm \
             -p 80:80 \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
-            certbot/certbot certonly \
-            --standalone \
-            --staging \
-            -d ${{ env.DOMAIN }} \
-            --email ${{ env.EMAIL }} \
-            --agree-tos \
-            --non-interactive \
-            || echo "Certificado já existente ou renovado."
+            certbot/certbot sh -c '
+              if [ -d "/etc/letsencrypt/live/${{ env.DOMAIN }}" ]; then
+                echo "Certificado encontrado. Tentando renovar..."
+                certbot renew
+              else
+                echo "Nenhum certificado encontrado. Gerando um novo..."
+                certbot certonly \
+                  --standalone \
+                  --staging \
+                  -d ${{ env.DOMAIN }} \
+                  --email ${{ env.EMAIL }} \
+                  --agree-tos \
+                  --non-interactive
+              fi
+            '
 
       - name: Deploy com Docker Compose
         run: |
