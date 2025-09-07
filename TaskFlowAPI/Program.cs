@@ -17,6 +17,7 @@ var summaries = new[]
 
 app.MapGet("/api/weatherforecast", () =>
 {
+    Console.WriteLine("O endpoint weatherforecast foi acessado!");
     var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
