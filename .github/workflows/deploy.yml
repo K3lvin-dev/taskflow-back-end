@@ -33,21 +33,11 @@ jobs:
             echo "TAG=dev" >> $GITHUB_ENV
           fi
 
-      - name: Definir tag da imagem
-        id: image_tag
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "TAG=latest" >> $GITHUB_ENV
-          else
-            echo "TAG=dev" >> $GITHUB_ENV
-          fi
-
       - name: Build & Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/k3lvin-dev/taskflow-api:${{ env.TAG }}
           tags: ghcr.io/k3lvin-dev/taskflow-api:${{ env.TAG }}
 
   # ---------------------------
@@ -57,22 +47,15 @@ jobs:
     needs: build-and-push
     runs-on: self-hosted
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
-    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           clean: false
-          clean: false
 
       - name: Definir profile e arquivo de ambiente
         id: deploy_vars
-      - name: Definir profile e arquivo de ambiente
-        id: deploy_vars
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "PROFILE=prd" >> $GITHUB_ENV
-            echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_PRD }}" >> $GITHUB_ENV
           if [ "${{ github.ref_name }}" = "main" ]; then
             echo "PROFILE=prd" >> $GITHUB_ENV
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_PRD }}" >> $GITHUB_ENV
@@ -82,15 +65,14 @@ jobs:
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_DEV }}" >> $GITHUB_ENV
             echo "DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
           fi
+          echo "LETSENCRYPT_EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
 
       - name: Atualizar arquivo .env
-        run: echo "${{ env.ENV_FILE_SECRET }}" > .env
         run: echo "${{ env.ENV_FILE_SECRET }}" > .env
 
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios para certificados
       - name: Criar diretórios para certificados
         run: |
           mkdir -p ./data/certbot/conf
@@ -98,13 +80,11 @@ jobs:
 
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down --remove-orphans || echo "Nenhum container em execução para parar."
-      - name: Parar containers existentes para liberar a porta 80
-        run: docker compose down --remove-orphans || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou Renovar Certificado
       - name: Gerar ou Renovar Certificado
         run: |
           docker run --rm \
+            -p 80:80 \
             --entrypoint /bin/sh \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
@@ -114,7 +94,7 @@ jobs:
                 certbot renew;
               else
                 echo "Nenhum certificado encontrado. Gerando um novo..."
-                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ secrets.EMAIL }} --agree-tos --non-interactive;
+                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.LETSENCRYPT_EMAIL }} --agree-tos --non-interactive;
               fi
             '
 
@@ -122,8 +102,5 @@ jobs:
         run: |
           docker compose --profile ${{ env.PROFILE }} pull
           docker compose --profile ${{ env.PROFILE }} up -d --build
-          docker compose --profile ${{ env.PROFILE }} pull
-          docker compose --profile ${{ env.PROFILE }} up -d --build
           docker image prune -af
-
 
