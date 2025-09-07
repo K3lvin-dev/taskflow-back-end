@@ -109,6 +109,7 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./loki/promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
+    user: "1000:118"
     networks:
       - taskflow-net
 
