@@ -67,9 +67,6 @@ jobs:
       - name: Atualizar arquivo .env
         run: echo "${{ env.ENV_FILE_SECRET }}" > .env
 
-      - name: Criar arquivo .htpasswd para Nginx a partir de secret
-        run: echo "${{ secrets.HTPASSWD_FILE }}" > ./nginx/.htpasswd
-
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
