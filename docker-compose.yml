@@ -9,6 +9,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
       - ./data/certbot/conf:/etc/letsencrypt:ro
       - ./data/certbot/www:/var/www/certbot:ro
     networks:
@@ -88,12 +89,47 @@ services:
     networks:
       - taskflow-net
 
+  # --- STACK DE OBSERVABILIDADE (LOGS E MÉTRICAS) ---
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: taskflow_loki
+    restart: always
+    profiles: ["prd", "dev"]
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - taskflow-net
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: taskflow_promtail
+    restart: always
+    profiles: ["prd", "dev"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./loki/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - taskflow-net
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: taskflow_grafana
+    restart: always
+    profiles: ["prd", "dev"]
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - taskflow-net
+
+# --- Volumes para persistência de dados ---
 volumes:
   postgres_data_prd:
   redis_data_prd:
   postgres_data_dev:
   redis_data_dev:
+  grafana_data:
 
+# --- Rede customizada para comunicação interna ---
 networks:
   taskflow-net:
     driver: bridge

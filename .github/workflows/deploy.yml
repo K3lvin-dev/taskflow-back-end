@@ -6,7 +6,7 @@ on:
 
 jobs:
   # ---------------------------
-  # Job 1: Construir e Enviar Docker
+  # Job 1: Construir e Enviar Imagem Docker
   # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
@@ -53,27 +53,27 @@ jobs:
         with:
           clean: false
 
-      - name: Definir perfil e arquivo de ambiente
+      - name: Definir perfil e variáveis de ambiente
         id: deploy_vars
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
             echo "PROFILE=prd" >> $GITHUB_ENV
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_PRD }}" >> $GITHUB_ENV
-            echo "DOMAIN=app.taskflow.vps-kinghost.net" >> $GITHUB_ENV
           else
             echo "PROFILE=dev" >> $GITHUB_ENV
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_DEV }}" >> $GITHUB_ENV
-            echo "DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
           fi
-          echo "LETSENCRYPT_EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
 
       - name: Atualizar arquivo .env
         run: echo "${{ env.ENV_FILE_SECRET }}" > .env
 
+      - name: Criar arquivo .htpasswd para Nginx a partir de secret
+        run: echo "${{ secrets.HTPASSWD_FILE }}" > ./nginx/.htpasswd
+
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-      - name: Criar diretórios para certificados
+      - name: Criar diretórios para Certbot
         run: |
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
@@ -81,22 +81,24 @@ jobs:
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down --remove-orphans || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou renovar certificado SSL
+      - name: Gerar ou renovar certificado SSL para todos os domínios
         run: |
+          CERT_DOMAINS="-d app.taskflow.vps-kinghost.net -d dev.taskflow.vps-kinghost.net -d monitor.taskflow.vps-kinghost.net"
+          
           docker run --rm \
             -p 80:80 \
             --entrypoint /bin/sh \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
-            certbot/certbot -c '
-              if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then
-                echo "Certificado encontrado. Tentando renovar..."
+            certbot/certbot -c "
+              if [ -d /etc/letsencrypt/live/app.taskflow.vps-kinghost.net ]; then
+                echo 'Certificado encontrado. Tentando renovar...'
                 certbot renew;
               else
-                echo "Nenhum certificado encontrado. Gerando um novo..."
-                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.LETSENCRYPT_EMAIL }} --agree-tos --non-interactive;
+                echo 'Nenhum certificado encontrado. Gerando um novo...'
+                certbot certonly --standalone $CERT_DOMAINS --email ${{ secrets.EMAIL }} --agree-tos --non-interactive;
               fi
-            '
+            "
 
       - name: Realizar deploy com Docker Compose
         run: |
