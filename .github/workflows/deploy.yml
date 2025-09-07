@@ -65,6 +65,7 @@ jobs:
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_DEV }}" >> $GITHUB_ENV
             echo "DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
           fi
+          echo "LETSENCRYPT_EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
 
       - name: Atualizar arquivo .env
         run: echo "${{ env.ENV_FILE_SECRET }}" > .env
@@ -92,7 +93,7 @@ jobs:
                 certbot renew;
               else
                 echo "Nenhum certificado encontrado. Gerando um novo..."
-                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ secrets.EMAIL }} --agree-tos --non-interactive;
+                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.LETSENCRYPT_EMAIL }} --agree-tos --non-interactive;
               fi
             '
 
