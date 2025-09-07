@@ -2,12 +2,7 @@ name: CI/CD - Deploy TaskFlow API to VPS
 
 on:
   push:
-    branches: ["main"]
-
-env:
-  IMAGE_NAME: ghcr.io/k3lvin-dev/taskflow-api
-  DOMAIN: app.taskflow.vps-kinghost.net
-  EMAIL: kelvingabriel70@hotmail.com
+    branches: ["main", "develop"]
 
 jobs:
   # ---------------------------
@@ -21,8 +16,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          clean: false # Impede que os certificados salvos sejam apagados
+
+      - name: Define a tag da imagem
+        id: image_tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+          fi
 
       - name: Log in GHCR
         uses: docker/login-action@v3
@@ -36,7 +38,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/k3lvin-dev/taskflow-api:${{ env.IMAGE_TAG }}
 
   # ---------------------------
   # Job 2: Deploy na VPS
@@ -44,14 +46,30 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: self-hosted
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          clean: false # Impede que os certificados salvos sejam apagados
+          clean: false # Impede que a pasta de certificados seja apagada
+
+      - name: Define variáveis de ambiente
+        id: env_vars
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENV_FILE=${{ secrets.ENV_FILE_PRD }}" >> $GITHUB_ENV
+            echo "COMPOSE_FILE=docker-compose.yml" >> $GITHUB_ENV
+            echo "DOMAIN=app.taskflow.vps-kinghost.net" >> $GITHUB_ENV
+            echo "DEV_DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "ENV_FILE=${{ secrets.ENV_FILE_DEV }}" >> $GITHUB_ENV
+            echo "COMPOSE_FILE=docker-compose.dev.yml" >> $GITHUB_ENV
+            echo "DOMAIN=app.taskflow.vps-kinghost.net" >> $GITHUB_ENV
+            echo "DEV_DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
+          fi
 
       - name: Atualizar arquivo .env
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        run: echo "${{ env.ENV_FILE }}" > .env
 
       - name: Logar no GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
@@ -61,10 +79,11 @@ jobs:
           mkdir -p ./data/certbot/conf
           mkdir -p ./data/certbot/www
 
-      - name: Parar containers existentes para liberar a porta 80
-        run: docker compose down || echo "Nenhum container em execução para parar."
+      - name: Parar containers existentes do ambiente
+        run: docker compose -f ${{ env.COMPOSE_FILE }} down || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou Renovar Certificado de Produção
+      - name: Gerar ou Renovar Certificados (PRD e DEV)
+        if: github.ref == 'refs/heads/main' # Executa apenas no deploy de produção
         run: |
           docker run --rm \
             -p 80:80 \
@@ -72,18 +91,11 @@ jobs:
             -v $(pwd)/data/certbot/www:/var/www/certbot \
             --entrypoint /bin/sh \
             certbot/certbot -c "
-              if [ -d /etc/letsencrypt/live/${{ env.DOMAIN }} ]; then
-                echo 'Certificado encontrado. Tentando renovar...'
-                certbot renew;
-              else
-                echo 'Nenhum certificado encontrado. Gerando um novo...'
-                certbot certonly --standalone -d ${{ env.DOMAIN }} --email ${{ env.EMAIL }} --agree-tos --non-interactive;
-              fi
+              certbot certonly --standalone -d ${{ env.DOMAIN }} -d ${{ env.DEV_DOMAIN }} --email ${{ secrets.EMAIL }} --agree-tos --non-interactive --expand || certbot renew
             "
 
       - name: Deploy com Docker Compose
         run: |
-          docker compose pull
-          docker compose up -d --build
+          docker compose -f ${{ env.COMPOSE_FILE }} pull
+          docker compose -f ${{ env.COMPOSE_FILE }} up -d --build
           docker image prune -af
-

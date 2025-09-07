@@ -1,51 +1,39 @@
-version: "3.9"
-
 services:
-  # ---------------------------
-  # API .NET
-  # ---------------------------
-  api:
-    container_name: taskflow_api
-    image: ghcr.io/k3lvin-dev/taskflow-api:latest
+  # --- SERVIÇOS DE PRODUÇÃO (PRD) ---
+  api_prd:
+    container_name: taskflow_api_prd
+    image: ghcr.io/k3lvin-dev/taskflow-api:latest # Usa a tag 'latest' para produção
     restart: always
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
-      - Redis__Configuration=redis:6379
+      - Redis__Configuration=redis_prd:6379
     networks:
-      - taskflow-net
+      - taskflow-net-prd
 
-  # ---------------------------
-  # PostgreSQL
-  # ---------------------------
-  postgres:
+  postgres_prd:
     image: postgres:14-alpine
-    container_name: taskflow_postgres
+    container_name: taskflow_postgres_prd
     restart: always
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_prd:/var/lib/postgresql/data
     networks:
-      - taskflow-net
+      - taskflow-net-prd
 
-  # ---------------------------
-  # Redis
-  # ---------------------------
-  redis:
+  redis_prd:
     image: redis:7-alpine
-    container_name: taskflow_redis
+    container_name: taskflow_redis_prd
     restart: always
     volumes:
-      - redis_data:/data
+      - redis_data_prd:/data
     networks:
-      - taskflow-net
+      - taskflow-net-prd
 
-  # ---------------------------
-  # Nginx Proxy Reverso
-  # ---------------------------
+  # --- NGINX PROXY REVERSO (COMPARTILHADO) ---
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
@@ -58,16 +46,17 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt:ro
       - ./data/certbot/www:/var/www/certbot:ro
     depends_on:
-      - api
+      - api_prd
     networks:
-      - taskflow-net
-    command: >
-      sh -c "nginx -g 'daemon off;'"
+      - taskflow-net-prd
+      - taskflow-net-dev
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_data_prd:
+  redis_data_prd:
 
 networks:
-  taskflow-net:
+  taskflow-net-prd:
+    driver: bridge
+  taskflow-net-dev:
     driver: bridge
