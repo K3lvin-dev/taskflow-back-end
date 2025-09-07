@@ -1,5 +1,5 @@
 services:
-  # --- NGINX PROXY REVERSO (SEMPRE ATIVO) ---
+  # --- NGINX PROXY REVERSO (sempre ativo) ---
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
@@ -14,7 +14,7 @@ services:
     networks:
       - taskflow-net
 
-  # --- SERVIÇOS DE PRODUÇÃO (PRD) ---
+  # --- Serviços de produção (PRD) ---
   api_prd:
     container_name: taskflow_api_prd
     image: ghcr.io/k3lvin-dev/taskflow-api:latest
@@ -51,7 +51,7 @@ services:
     networks:
       - taskflow-net
 
-  # --- SERVIÇOS DE DESENVOLVIMENTO (DEV) ---
+  # --- Serviços de desenvolvimento (DEV) ---
   api_dev:
     container_name: taskflow_api_dev
     image: ghcr.io/k3lvin-dev/taskflow-api:dev

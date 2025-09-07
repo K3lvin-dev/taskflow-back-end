@@ -6,7 +6,7 @@ on:
 
 jobs:
   # ---------------------------
-  # Job 1: Build & Push Docker
+  # Job 1: Construir e Enviar Docker
   # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
@@ -14,10 +14,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Checkout repository
+      - name: Fazer checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Log in GHCR
+      - name: Logar no GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -33,7 +33,7 @@ jobs:
             echo "TAG=dev" >> $GITHUB_ENV
           fi
 
-      - name: Build & Push Docker image
+      - name: Construir e enviar imagem Docker
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -48,12 +48,12 @@ jobs:
     runs-on: self-hosted
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     steps:
-      - name: Checkout repository
+      - name: Fazer checkout do repositório
         uses: actions/checkout@v4
         with:
           clean: false
 
-      - name: Definir profile e arquivo de ambiente
+      - name: Definir perfil e arquivo de ambiente
         id: deploy_vars
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
@@ -81,7 +81,7 @@ jobs:
       - name: Parar containers existentes para liberar a porta 80
         run: docker compose down --remove-orphans || echo "Nenhum container em execução para parar."
 
-      - name: Gerar ou Renovar Certificado
+      - name: Gerar ou renovar certificado SSL
         run: |
           docker run --rm \
             -p 80:80 \
@@ -98,9 +98,8 @@ jobs:
               fi
             '
 
-      - name: Deploy com Docker Compose
+      - name: Realizar deploy com Docker Compose
         run: |
           docker compose --profile ${{ env.PROFILE }} pull
           docker compose --profile ${{ env.PROFILE }} up -d --build
           docker image prune -af
-
