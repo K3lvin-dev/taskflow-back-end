@@ -17,7 +17,7 @@ services:
     mem_limit: 128m
     cpus: 0.2
 
-  # --- API .NET ---
+  # --- Serviços de produção (PRD) ---
   api_prd:
     container_name: taskflow_api_prd
     image: ghcr.io/k3lvin-dev/taskflow-api:latest
@@ -32,7 +32,6 @@ services:
     mem_limit: 700m
     cpus: 0.8
 
-  # --- PostgreSQL ---
   postgres_prd:
     image: postgres:14-alpine
     container_name: taskflow_postgres_prd
@@ -49,7 +48,6 @@ services:
     mem_limit: 900m
     cpus: 0.8
 
-  # --- Redis ---
   redis_prd:
     image: redis:7-alpine
     container_name: taskflow_redis_prd
@@ -62,24 +60,66 @@ services:
     mem_limit: 256m
     cpus: 0.3
 
-  # --- Loki ---
+  # --- Serviços de desenvolvimento (DEV) ---
+  api_dev:
+    container_name: taskflow_api_dev
+    image: ghcr.io/k3lvin-dev/taskflow-api:dev
+    restart: always
+    profiles: ["dev"]
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+      - Redis__Configuration=redis_dev:6379
+    networks:
+      - taskflow-net
+    mem_limit: 700m
+    cpus: 0.8
+
+  postgres_dev:
+    image: postgres:14-alpine
+    container_name: taskflow_postgres_dev
+    restart: always
+    profiles: ["dev"]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - taskflow-net
+    mem_limit: 900m
+    cpus: 0.8
+
+  redis_dev:
+    image: redis:7-alpine
+    container_name: taskflow_redis_dev
+    restart: always
+    profiles: ["dev"]
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - taskflow-net
+    mem_limit: 256m
+    cpus: 0.3
+
+  # --- STACK DE OBSERVABILIDADE ---
   loki:
     image: grafana/loki:2.9.0
     container_name: taskflow_loki
     restart: always
-    profiles: ["prd"]
+    profiles: ["prd", "dev"]
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - taskflow-net
     mem_limit: 400m
     cpus: 0.3
 
-  # --- Promtail ---
   promtail:
     image: grafana/promtail:2.9.0
     container_name: taskflow_promtail
     restart: always
-    profiles: ["prd"]
+    profiles: ["prd", "dev"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -91,12 +131,11 @@ services:
     mem_limit: 200m
     cpus: 0.2
 
-  # --- Grafana ---
   grafana:
     image: grafana/grafana:10.0.0
     container_name: taskflow_grafana
     restart: always
-    profiles: ["prd"]
+    profiles: ["prd", "dev"]
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
@@ -104,13 +143,15 @@ services:
     mem_limit: 400m
     cpus: 0.3
 
-# --- Volumes ---
+# --- Volumes para persistência de dados ---
 volumes:
   postgres_data_prd:
   redis_data_prd:
+  postgres_data_dev:
+  redis_data_dev:
   grafana_data:
 
-# --- Rede ---
+# --- Rede customizada ---
 networks:
   taskflow-net:
     driver: bridge
