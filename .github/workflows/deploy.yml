@@ -65,6 +65,7 @@ jobs:
             echo "ENV_FILE_SECRET=${{ secrets.ENV_FILE_DEV }}" >> $GITHUB_ENV
             echo "DOMAIN=dev.taskflow.vps-kinghost.net" >> $GITHUB_ENV
           fi
+          # Adicionando o email ao ambiente do job para garantir a expansão correta
           echo "LETSENCRYPT_EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
 
       - name: Atualizar arquivo .env
@@ -84,6 +85,7 @@ jobs:
       - name: Gerar ou Renovar Certificado
         run: |
           docker run --rm \
+            -p 80:80 \
             --entrypoint /bin/sh \
             -v $(pwd)/data/certbot/conf:/etc/letsencrypt \
             -v $(pwd)/data/certbot/www:/var/www/certbot \
