@@ -6,7 +6,7 @@ on:
 
 jobs:
   # ---------------------------
-  # Job 1: Construir e Enviar Imagem Docker
+  # Job 1: Construir e Enviar Imagem Docker da API
   # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
             echo "TAG=dev" >> $GITHUB_ENV
           fi
 
-      - name: Construir e enviar imagem Docker
+      - name: Construir e enviar imagem Docker da API
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -100,5 +100,5 @@ jobs:
       - name: Realizar deploy com Docker Compose
         run: |
           docker compose --profile ${{ env.PROFILE }} pull
-          docker compose --profile ${{ env.PROFILE }} up -d --build
+          docker compose --profile ${{ env.PROFILE }} up -d --remove-orphans
           docker image prune -af

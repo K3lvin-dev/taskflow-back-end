@@ -18,6 +18,16 @@ services:
     cpus: 0.2
 
   # --- Serviços de produção (PRD) ---
+  web_prd:
+    image: ghcr.io/k3lvin-dev/taskflow-frontend:latest
+    container_name: taskflow_web_prd
+    restart: always
+    profiles: ["prd"]
+    networks:
+      - taskflow-net
+    mem_limit: 128m
+    cpus: 0.2
+
   api_prd:
     container_name: taskflow_api_prd
     image: ghcr.io/k3lvin-dev/taskflow-api:latest
@@ -61,6 +71,16 @@ services:
     cpus: 0.3
 
   # --- Serviços de desenvolvimento (DEV) ---
+  web_dev:
+    image: ghcr.io/k3lvin-dev/taskflow-frontend:dev
+    container_name: taskflow_web_dev
+    restart: always
+    profiles: ["dev"]
+    networks:
+      - taskflow-net
+    mem_limit: 128m
+    cpus: 0.2
+
   api_dev:
     container_name: taskflow_api_dev
     image: ghcr.io/k3lvin-dev/taskflow-api:dev
