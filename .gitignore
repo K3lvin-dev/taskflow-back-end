@@ -55,3 +55,7 @@ nunit-*.xml
 
 # env
 .env
+.env.dev
+.env.example
+.env.prd
+TaskFlow_API_Collection.postman_collection.json
