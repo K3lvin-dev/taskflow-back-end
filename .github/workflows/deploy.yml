@@ -5,9 +5,6 @@ on:
     branches: ["main", "develop"]
 
 jobs:
-  # ---------------------------
-  # Job 1: Construir e Enviar Imagem Docker
-  # ---------------------------
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -40,9 +37,6 @@ jobs:
           push: true
           tags: ghcr.io/k3lvin-dev/taskflow-api:${{ env.TAG }}
 
-  # ---------------------------
-  # Job 2: Deploy na VPS
-  # ---------------------------
   deploy:
     needs: build-and-push
     runs-on: self-hosted
@@ -76,12 +70,15 @@ jobs:
           mkdir -p ./data/certbot/www
 
       - name: Parar containers existentes para liberar a porta 80
-        run: docker compose down --remove-orphans || echo "Nenhum container em execução para parar."
+        run: |
+          docker stop taskflow_nginx || true
+          docker rm taskflow_nginx || true
+          docker compose down --remove-orphans || true
 
       - name: Gerar ou renovar certificado SSL para todos os domínios
         run: |
           CERT_DOMAINS="-d app.taskflow.vps-kinghost.net -d dev.taskflow.vps-kinghost.net -d monitor.taskflow.vps-kinghost.net"
-          
+
           docker run --rm \
             -p 80:80 \
             --entrypoint /bin/sh \
@@ -99,6 +96,7 @@ jobs:
 
       - name: Realizar deploy com Docker Compose
         run: |
+          docker compose --profile ${{ env.PROFILE }} down --remove-orphans
           docker compose --profile ${{ env.PROFILE }} pull
-          docker compose --profile ${{ env.PROFILE }} up -d --build
+          docker compose --profile ${{ env.PROFILE }} up -d
           docker image prune -af
