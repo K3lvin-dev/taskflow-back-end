@@ -96,6 +96,7 @@ jobs:
 
       - name: Realizar deploy com Docker Compose
         run: |
+          docker compose --profile ${{ env.PROFILE }} down --remove-orphans
           docker compose --profile ${{ env.PROFILE }} pull
-          docker compose --profile ${{ env.PROFILE }} up -d --build
+          docker compose --profile ${{ env.PROFILE }} up -d
           docker image prune -af
