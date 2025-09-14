@@ -1,5 +1,5 @@
 services:
-  # --- NGINX PROXY REVERSO ---
+  # --- NGINX PROXY REVERSO  ---
   nginx:
     image: nginx:1.27-alpine
     container_name: taskflow_nginx
@@ -13,21 +13,12 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt:ro
       - ./data/certbot/www:/var/www/certbot:ro
     networks:
-      - taskflow-net
+      - taskflow-net-prd
+      - taskflow-net-dev
     mem_limit: 128m
     cpus: 0.2
 
   # --- Serviços de produção (PRD) ---
-  web_prd:
-    image: ghcr.io/k3lvin-dev/taskflow-frontend:latest
-    container_name: taskflow_web_prd
-    restart: always
-    profiles: ["prd"]
-    networks:
-      - taskflow-net
-    mem_limit: 128m
-    cpus: 0.2
-
   api_prd:
     container_name: taskflow_api_prd
     image: ghcr.io/k3lvin-dev/taskflow-api:latest
@@ -38,7 +29,7 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis_prd:6379
     networks:
-      - taskflow-net
+      - taskflow-net-prd 
     mem_limit: 700m
     cpus: 0.8
 
@@ -54,7 +45,7 @@ services:
     volumes:
       - postgres_data_prd:/var/lib/postgresql/data
     networks:
-      - taskflow-net
+      - taskflow-net-prd
     mem_limit: 900m
     cpus: 0.8
 
@@ -66,21 +57,11 @@ services:
     volumes:
       - redis_data_prd:/data
     networks:
-      - taskflow-net
+      - taskflow-net-prd
     mem_limit: 256m
     cpus: 0.3
 
   # --- Serviços de desenvolvimento (DEV) ---
-  web_dev:
-    image: ghcr.io/k3lvin-dev/taskflow-frontend:dev
-    container_name: taskflow_web_dev
-    restart: always
-    profiles: ["dev"]
-    networks:
-      - taskflow-net
-    mem_limit: 128m
-    cpus: 0.2
-
   api_dev:
     container_name: taskflow_api_dev
     image: ghcr.io/k3lvin-dev/taskflow-api:dev
@@ -91,7 +72,7 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - Redis__Configuration=redis_dev:6379
     networks:
-      - taskflow-net
+      - taskflow-net-dev
     mem_limit: 700m
     cpus: 0.8
 
@@ -107,7 +88,7 @@ services:
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     networks:
-      - taskflow-net
+      - taskflow-net-dev
     mem_limit: 900m
     cpus: 0.8
 
@@ -119,11 +100,11 @@ services:
     volumes:
       - redis_data_dev:/data
     networks:
-      - taskflow-net
+      - taskflow-net-dev
     mem_limit: 256m
     cpus: 0.3
 
-  # --- STACK DE OBSERVABILIDADE ---
+  # --- STACK DE OBSERVABILIDADE  ---
   loki:
     image: grafana/loki:2.9.0
     container_name: taskflow_loki
@@ -131,7 +112,8 @@ services:
     profiles: ["prd", "dev"]
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - taskflow-net
+      - taskflow-net-prd
+      - taskflow-net-dev
     mem_limit: 400m
     cpus: 0.3
 
@@ -147,7 +129,8 @@ services:
     command: -config.file=/etc/promtail/config.yml
     user: "1000:118"
     networks:
-      - taskflow-net
+      - taskflow-net-prd
+      - taskflow-net-dev
     mem_limit: 200m
     cpus: 0.2
 
@@ -159,7 +142,8 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
-      - taskflow-net
+      - taskflow-net-prd
+      - taskflow-net-dev
     mem_limit: 400m
     cpus: 0.3
 
@@ -171,7 +155,8 @@ volumes:
   redis_data_dev:
   grafana_data:
 
-# --- Rede customizada ---
 networks:
-  taskflow-net:
+  taskflow-net-prd:
+    driver: bridge
+  taskflow-net-dev:
     driver: bridge
