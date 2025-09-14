@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using TaskFlowAPI.src.entity.task.services;
 using TaskFlowAPI.src.entity.task.dtos;
 
@@ -6,6 +8,7 @@ namespace TaskFlowAPI.src.entity.task.controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TaskController : ControllerBase
 {
     private readonly ITaskService _taskService;
@@ -13,6 +16,16 @@ public class TaskController : ControllerBase
     public TaskController(ITaskService taskService)
     {
         _taskService = taskService;
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst("user_id")?.Value;
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("Token inválido");
+        }
+        return userId;
     }
 
     [HttpGet("{id}")]

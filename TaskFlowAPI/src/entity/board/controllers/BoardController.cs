@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using TaskFlowAPI.src.entity.board.services;
 using TaskFlowAPI.src.entity.board.dtos;
 
@@ -6,6 +8,7 @@ namespace TaskFlowAPI.src.entity.board.controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class BoardController : ControllerBase
 {
     private readonly IBoardService _boardService;
@@ -13,6 +16,16 @@ public class BoardController : ControllerBase
     public BoardController(IBoardService boardService)
     {
         _boardService = boardService;
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst("user_id")?.Value;
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("Token inválido");
+        }
+        return userId;
     }
 
     [HttpGet]
