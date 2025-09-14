@@ -1,6 +1,4 @@
 var builder = WebApplication.CreateBuilder(args);
-// teste dev
-
 
 builder.Services.AddOpenApi();
 
