@@ -3,7 +3,6 @@ using TaskFlowAPI.src.entity.board.models;
 using TaskFlowAPI.src.entity.column.models;
 using TaskFlowAPI.src.entity.task.models;
 using TaskFlowAPI.src.entity.user.models;
-using TaskFlowAPI.src.common;
 
 namespace TaskFlowAPI.src.entity;
 
@@ -22,7 +21,6 @@ public class TaskFlowDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configuração Board
         modelBuilder.Entity<Board>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -33,7 +31,6 @@ public class TaskFlowDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configuração Column
         modelBuilder.Entity<Column>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -46,7 +43,6 @@ public class TaskFlowDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configuração TaskItem
         modelBuilder.Entity<TaskItem>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -61,7 +57,6 @@ public class TaskFlowDbContext : DbContext
                   );
         });
 
-        // Configuração User
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);

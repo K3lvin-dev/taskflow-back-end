@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using TaskFlowAPI.src.common;
+using TaskFlowAPI.src.entity.task.enums;
 
 namespace TaskFlowAPI.src.entity.task.models;
 
@@ -24,7 +24,6 @@ public class TaskItem
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Foreign key para Column
     public Guid ColumnId { get; set; }
     public virtual TaskFlowAPI.src.entity.column.models.Column Column { get; set; } = null!;
 }

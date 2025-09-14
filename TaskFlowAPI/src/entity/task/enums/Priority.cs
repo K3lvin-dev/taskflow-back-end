@@ -1,4 +1,4 @@
-namespace TaskFlowAPI.src.common;
+namespace TaskFlowAPI.src.entity.task.enums;
 
 public enum Priority
 {

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlowAPI.src.common;
 using TaskFlowAPI.src.entity;
+using TaskFlowAPI.src.entity.task.enums;
 using TaskFlowAPI.src.entity.task.models;
 using TaskFlowAPI.src.entity.task.dtos;
 

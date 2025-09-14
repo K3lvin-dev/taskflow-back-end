@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlowAPI.src.common;
 using TaskFlowAPI.src.entity;
+using TaskFlowAPI.src.entity.column.enums;
+using TaskFlowAPI.src.entity.task.enums;
 using TaskFlowAPI.src.entity.board.models;
 using TaskFlowAPI.src.entity.board.dtos;
 using TaskFlowAPI.src.entity.column.models;
@@ -55,18 +56,16 @@ public class BoardService : IBoardService
         _context.Boards.Add(board);
         await _context.SaveChangesAsync();
 
-        // Criar as 3 colunas padrão
         var columns = new List<Column>
         {
-            new Column { BoardId = board.Id, Type = ColumnType.Todo, Title = "To Do", Color = ColumnType.Todo },
-            new Column { BoardId = board.Id, Type = ColumnType.Doing, Title = "Doing", Color = ColumnType.Doing },
-            new Column { BoardId = board.Id, Type = ColumnType.Done, Title = "Done", Color = ColumnType.Done }
+            new() { BoardId = board.Id, Type = ColumnType.Todo, Title = "To Do", Color = ColumnType.Todo },
+            new() { BoardId = board.Id, Type = ColumnType.Doing, Title = "Doing", Color = ColumnType.Doing },
+            new() { BoardId = board.Id, Type = ColumnType.Done, Title = "Done", Color = ColumnType.Done }
         };
 
         _context.Columns.AddRange(columns);
         await _context.SaveChangesAsync();
 
-        // Recarregar o board com as colunas
         board = await _context.Boards
             .Include(b => b.Columns)
                 .ThenInclude(c => c.Tasks)
