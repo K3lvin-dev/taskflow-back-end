@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using TaskFlowAPI.src.entity;
 using TaskFlowAPI.src.entity.board.services;
 using TaskFlowAPI.src.entity.task.services;
+using TaskFlowAPI.src.entity.user.services;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,6 +70,36 @@ builder.Services.AddDbContext<TaskFlowDbContext>(options =>
 
 builder.Services.AddScoped<IBoardService, BoardService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+// Configuração JWT
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "sua-chave-super-secreta-que-deve-ter-pelo-menos-32-caracteres";
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "TaskFlowAPI";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "TaskFlowUsers";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -85,6 +119,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/api/health", () =>
@@ -98,11 +134,22 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<TaskFlowDbContext>();
     try
     {
-        context.Database.EnsureCreated();
+        context.Database.Migrate();
+        Console.WriteLine("✅ Migrações aplicadas com sucesso");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Erro ao criar o banco de dados: {ex.Message}");
+        Console.WriteLine($"❌ Erro ao aplicar migrações: {ex.Message}");
+        // Fallback para criação simples se não houver migrações
+        try
+        {
+            context.Database.EnsureCreated();
+            Console.WriteLine("✅ Banco criado com EnsureCreated como fallback");
+        }
+        catch (Exception ex2)
+        {
+            Console.WriteLine($"❌ Erro ao criar banco: {ex2.Message}");
+        }
     }
 }
 

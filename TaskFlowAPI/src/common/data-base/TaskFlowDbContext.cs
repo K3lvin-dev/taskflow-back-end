@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlowAPI.src.entity.board.models;
 using TaskFlowAPI.src.entity.column.models;
 using TaskFlowAPI.src.entity.task.models;
+using TaskFlowAPI.src.entity.user.models;
 using TaskFlowAPI.src.common;
 
 namespace TaskFlowAPI.src.entity;
@@ -15,6 +16,7 @@ public class TaskFlowDbContext : DbContext
     public DbSet<Board> Boards { get; set; }
     public DbSet<Column> Columns { get; set; }
     public DbSet<TaskItem> Tasks { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +59,19 @@ public class TaskFlowDbContext : DbContext
                       v => string.Join(',', v),
                       v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                   );
+        });
+
+        // Configuração User
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.PasswordHash).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
         });
     }
 }
