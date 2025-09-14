@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskFlowAPI.src.entity.user.models;
+using TaskFlowAPI.src.common.options;
 
 namespace TaskFlowAPI.src.entity.user.services;
 
@@ -14,26 +16,16 @@ public interface IJwtService
 
 public class JwtService : IJwtService
 {
-    private readonly IConfiguration _configuration;
-    private readonly string _secretKey;
-    private readonly string _issuer;
-    private readonly string _audience;
-    private readonly TimeSpan _expiration;
+    private readonly JwtOptions _jwtOptions;
 
-    public JwtService(IConfiguration configuration)
+    public JwtService(IOptions<JwtOptions> jwtOptions)
     {
-        _configuration = configuration;
-        _secretKey = Environment.GetEnvironmentVariable("JWT_SECRET");
-        _issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-        _audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-
-        var expirationMinutes = Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES");
-        _expiration = TimeSpan.FromMinutes(int.TryParse(expirationMinutes, out var minutes) ? minutes : 60);
+        _jwtOptions = jwtOptions.Value;
     }
 
     public string GenerateToken(User user)
     {
-        var key = Encoding.UTF8.GetBytes(_secretKey);
+        var key = Encoding.UTF8.GetBytes(_jwtOptions.Secret);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new[]
@@ -43,9 +35,9 @@ public class JwtService : IJwtService
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim("user_id", user.Id.ToString())
             }),
-            Expires = DateTime.UtcNow.Add(_expiration),
-            Issuer = _issuer,
-            Audience = _audience,
+            Expires = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpirationMinutes),
+            Issuer = _jwtOptions.Issuer,
+            Audience = _jwtOptions.Audience,
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
@@ -61,16 +53,16 @@ public class JwtService : IJwtService
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_secretKey);
+            var key = Encoding.UTF8.GetBytes(_jwtOptions.Secret);
 
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
                 ValidateIssuer = true,
-                ValidIssuer = _issuer,
+                ValidIssuer = _jwtOptions.Issuer,
                 ValidateAudience = true,
-                ValidAudience = _audience,
+                ValidAudience = _jwtOptions.Audience,
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
