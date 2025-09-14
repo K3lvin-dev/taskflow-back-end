@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using TaskFlowAPI.src.common;
+using TaskFlowAPI.src.entity.column.enums;
 using TaskFlowAPI.src.entity.task.models;
 
 namespace TaskFlowAPI.src.entity.column.models;
@@ -20,7 +20,6 @@ public class Column
 
     public virtual List<TaskItem> Tasks { get; set; } = new List<TaskItem>();
 
-    // Foreign key para Board
     public Guid BoardId { get; set; }
     public virtual TaskFlowAPI.src.entity.board.models.Board Board { get; set; } = null!;
 }

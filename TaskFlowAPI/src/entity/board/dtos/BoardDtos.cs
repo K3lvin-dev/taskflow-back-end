@@ -1,4 +1,5 @@
-using TaskFlowAPI.src.common;
+using TaskFlowAPI.src.entity.column.enums;
+using TaskFlowAPI.src.entity.task.enums;
 
 namespace TaskFlowAPI.src.entity.board.dtos;
 
